@@ -1,0 +1,13 @@
+{
+    "name": "fidel/chat-bot-pwd",
+    "description": "proyecto de chatbot con botman",
+    "license": "MIT",
+    "require": {
+        "botman/botman": "^2.8",
+        "botman/driver-web": "^1.5",
+        "nette/mail": "^4.0",
+        "laminas/laminas-mail": "^2.5",
+        "laminas/laminas-mime": "^2.12",
+        "google/apiclient": "^2.18"
+    }
+}
