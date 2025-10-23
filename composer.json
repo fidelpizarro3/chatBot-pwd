@@ -8,6 +8,13 @@
         "nette/mail": "^4.0",
         "laminas/laminas-mail": "^2.5",
         "laminas/laminas-mime": "^2.12",
-        "google/apiclient": "^2.18"
+        "google/apiclient": "^2.18",
+        "doctrine/cache": "1.12"
+    },
+    "autoload": {
+        "psr-4": {
+        "Modelo\\": "modelo/",
+        "Conversaciones\\": "control/Conversaciones/"
     }
+}
 }

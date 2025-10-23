@@ -2,7 +2,7 @@
 class BotModel {
 
     public static function saludar() {
-        $mensaje = "¡Hola! ¿Cómo estás?";
+        $mensaje = "¡Hola! ¿Cómo estás?, Escribi Menu para ver las opciones.";
         return $mensaje;
     }
 
@@ -56,7 +56,7 @@ class BotModel {
     }
 
     public static function hablarConHumano() {
-        $mensaje = "SOLO LLAMADAS! Contacto: Teléfono (299) 123-4567, Email: contacto@ejemplo.com";
+        $mensaje = "SOLO LLAMADAS! Contacto: Teléfono (299) 123-4567, Email: turnosclinicaunco@gmail.com";
         return $mensaje;
     }
 
@@ -67,7 +67,7 @@ class BotModel {
 
     public static function contacto() {
 
-        $mensaje = "Tel: 299-123456 • WhatsApp: 299-555555 • Mail: recepcion@consultorio.com";
+        $mensaje = "Tel: 299-123456 • WhatsApp: 299-555555 • Mail: turnosclinicaunco@gmail.com";
         return $mensaje;
     }
 }

@@ -1,62 +1,112 @@
 <?php
+namespace Modelo;
+
 use Laminas\Mail\Message;
 use Laminas\Mail\Transport\Smtp;
 use Laminas\Mail\Transport\SmtpOptions;
 use Laminas\Mime\Message as MimeMessage;
 use Laminas\Mime\Part as MimePart;
 
-class MailModel {
+class MailModel
+{
+    private Smtp $transport;
+    private array $defaultFrom;
 
-    public static function pruebaEnvio($destinatario, $asunto, $cuerpo) {
-        // 1. Validaciones básicas
-        $dest = trim($destinatario);
-        $subj = trim($asunto);
-        $msg  = trim($cuerpo);
+    public function __construct(array $config)
+    {
+        
+        $options = new SmtpOptions([
+            'name'              => $config['smtp']['name'] ?? 'smtp.gmail.com',
+            'host'              => $config['smtp']['host'] ?? 'smtp.gmail.com',
+            'port'              => $config['smtp']['port'] ?? 587,
+            'connection_class'  => $config['smtp']['connection_class'] ?? 'login',
+            'connection_config' => $config['smtp']['connection_config'] ?? [],
+        ]);
 
-        if ($dest === '' || $subj === '' || $msg === '') {
-            return "⚠️ Faltan datos para enviar el mail.";
+        $this->transport   = new Smtp($options);
+        $this->defaultFrom = $config['smtp']['from'] ?? [];
+    }
+
+    /**
+     *
+     *
+     * @param string
+     * @param string
+     * @param string|null
+     * @param string|null
+     * @param array      
+     * @param array|null 
+     */
+    public function send(
+        string $toEmail,
+        string $subject,
+        ?string $htmlBody = null,
+        ?string $textBody = null,
+        array $attachments = [],
+        ?array $replyTo = null
+    ): void {
+        $message = new Message();
+
+        
+        if (!empty($this->defaultFrom['email'])) {
+            $message->addFrom(
+                $this->defaultFrom['email'],
+                $this->defaultFrom['name'] ?? null
+            );
+        } else {
+            $message->addFrom('no-reply@local', 'No Reply');
         }
 
-        if (!filter_var($dest, FILTER_VALIDATE_EMAIL)) {
-            return "⚠️ El destinatario no parece un email válido.";
+        $message->addTo($toEmail)
+                ->setSubject($subject)
+                ->setEncoding('UTF-8');
+
+        
+        $parts = [];
+
+        if ($textBody !== null) {
+            $textPart = new MimePart($textBody);
+            $textPart->type     = 'text/plain; charset=UTF-8';
+            $textPart->encoding = 'quoted-printable';
+            $parts[] = $textPart;
         }
 
-        try {
-            // 2. Armar contenido MIME (HTML)
-            $html = new MimePart($msg);
-            $html->type = "text/html";
-            $body = new MimeMessage();
-            $body->addPart($html);
-
-            // 3. Crear mensaje
-            $mail = new Message();
-            $mail->setEncoding('UTF-8')
-                    ->addTo($dest)
-                    ->addFrom('tucorreo@gmail.com', 'Asistente PHP')
-                    ->setSubject($subj)
-                    ->setBody($body);
-
-            // 4. Configurar transporte SMTP (por ejemplo Gmail)
-            $transport = new Smtp();
-            $options = new SmtpOptions([
-                'name' => 'smtp.gmail.com',
-                'host' => 'smtp.gmail.com',
-                'port' => 587,
-                'connection_class' => 'login',
-                'connection_config' => [
-                    'username' => 'tucorreo@gmail.com',
-                    'password' => 'tu_app_password', // no la contraseña real
-                    'ssl' => 'tls',
-                ],
-            ]);
-            $transport->setOptions($options);
-
-            // 5. Enviar
-            $transport->send($mail);
-
-            return "✅ Correo enviado correctamente a $dest.";
-        } catch (Throwable $e) {
-            return "❌ Error al enviar: " . $e->getMessage();
+        if ($htmlBody !== null) { //cuerpo en HTML
+            $htmlPart = new MimePart($htmlBody);
+            $htmlPart->type     = 'text/html; charset=UTF-8';
+            $htmlPart->encoding = 'quoted-printable';
+            $parts[] = $htmlPart;
         }
+
+        // Adjuntos
+        foreach ($attachments as $path) {
+            if (!is_string($path) || !is_readable($path)) {
+                continue; 
+            }
+            $fileContent = file_get_contents($path); 
+            if ($fileContent === false) {
+                continue;
+            }
+
+            $filePart = new MimePart($fileContent);
+            $filePart->type        = mime_content_type($path) ?: 'application/octet-stream';
+            $filePart->disposition = 'attachment';
+            $filePart->encoding    = 'base64';
+            $filePart->filename    = basename($path);
+            $parts[] = $filePart;
+        }
+
+        if (empty($parts)) {
+            $fallback = new MimePart('Mensaje sin contenido');
+            $fallback->type     = 'text/plain; charset=UTF-8';
+            $fallback->encoding = 'quoted-printable';
+            $parts[] = $fallback;
+        }
+
+        $body = new MimeMessage(); 
+        $body->setParts($parts);
+        $message->setBody($body);
+
+        $this->transport->send($message);
     }
 }
