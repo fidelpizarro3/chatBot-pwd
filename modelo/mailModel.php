@@ -7,14 +7,23 @@ use Laminas\Mail\Transport\SmtpOptions;
 use Laminas\Mime\Message as MimeMessage;
 use Laminas\Mime\Part as MimePart;
 
+/**
+ * MailModel
+ * ---------
+ * Pequeña envoltura para enviar correos usando Laminas\Mail (SMTP).
+ * - Configuración esperada: [ 'smtp' => [ 'host','port','connection_class','connection_config', 'from' => ['email','name'] ] ]
+ */
 class MailModel
 {
     private Smtp $transport;
     private array $defaultFrom;
 
+    /**
+     * Constructor
+     * @param array $config Configuración de SMTP (ver arriba). Si faltan valores se usan valores por defecto razonables.
+     */
     public function __construct(array $config)
     {
-        
         $options = new SmtpOptions([
             'name'              => $config['smtp']['name'] ?? 'smtp.gmail.com',
             'host'              => $config['smtp']['host'] ?? 'smtp.gmail.com',
@@ -28,14 +37,16 @@ class MailModel
     }
 
     /**
+     * send
+     * Envia un correo al destinatario indicado. Soporta cuerpo en HTML y texto, y adjuntos opcionales.
      *
-     *
-     * @param string
-     * @param string
-     * @param string|null
-     * @param string|null
-     * @param array      
-     * @param array|null 
+     * @param string $toEmail     Email del destinatario
+     * @param string $subject     Asunto
+     * @param string|null $htmlBody  Cuerpo en HTML (opcional)
+     * @param string|null $textBody  Cuerpo en texto plano (opcional)
+     * @param array $attachments      Rutas a archivos a adjuntar (opcional)
+     * @param array|null $replyTo     Array con reply-to opcional (['email'=>'x','name'=>'y'])
+     * @return void
      */
     public function send(
         string $toEmail,
@@ -47,7 +58,7 @@ class MailModel
     ): void {
         $message = new Message();
 
-        
+        // From: si està definido en config lo usamos, sino un fallback
         if (!empty($this->defaultFrom['email'])) {
             $message->addFrom(
                 $this->defaultFrom['email'],
@@ -57,11 +68,12 @@ class MailModel
             $message->addFrom('no-reply@local', 'No Reply');
         }
 
+        // To + asunto + encoding
         $message->addTo($toEmail)
                 ->setSubject($subject)
                 ->setEncoding('UTF-8');
 
-        
+        // Construimos los diferentes partes MIME (texto, html, adjuntos)
         $parts = [];
 
         if ($textBody !== null) {
@@ -71,19 +83,19 @@ class MailModel
             $parts[] = $textPart;
         }
 
-        if ($htmlBody !== null) { //cuerpo en HTML
+        if ($htmlBody !== null) {
             $htmlPart = new MimePart($htmlBody);
             $htmlPart->type     = 'text/html; charset=UTF-8';
             $htmlPart->encoding = 'quoted-printable';
             $parts[] = $htmlPart;
         }
 
-        // Adjuntos
+        // Adjuntos: añadimos cada archivo si existe y es legible
         foreach ($attachments as $path) {
             if (!is_string($path) || !is_readable($path)) {
-                continue; 
+                continue;
             }
-            $fileContent = file_get_contents($path); 
+            $fileContent = file_get_contents($path);
             if ($fileContent === false) {
                 continue;
             }
@@ -96,6 +108,7 @@ class MailModel
             $parts[] = $filePart;
         }
 
+        // Si no hay partes (caso improbable) añadimos un fallback en texto
         if (empty($parts)) {
             $fallback = new MimePart('Mensaje sin contenido');
             $fallback->type     = 'text/plain; charset=UTF-8';
@@ -103,7 +116,8 @@ class MailModel
             $parts[] = $fallback;
         }
 
-        $body = new MimeMessage(); 
+        // Montamos el cuerpo MIME y enviamos
+        $body = new MimeMessage();
         $body->setParts($parts);
         $message->setBody($body);
 
